@@ -239,15 +239,14 @@ fn run_consumer(
     let mut recording = false;
 
     // ---------- spectrum visualisation setup ---------------------------- //
-    // 24 buckets: frontend duplicates center for symmetry → 25 displayed bars
     const BUCKETS: usize = 24;
     const WINDOW_SIZE: usize = 512;
     let mut visualizer = AudioVisualiser::new(
         in_sample_rate,
         WINDOW_SIZE,
         BUCKETS,
-        400.0,  // vocal_min_hz - captures speech fundamentals + harmonics
-        4000.0, // vocal_max_hz - includes all speech harmonics for full spectrum
+        400.0,  // vocal_min_hz
+        4000.0, // vocal_max_hz
     );
 
     fn handle_frame(

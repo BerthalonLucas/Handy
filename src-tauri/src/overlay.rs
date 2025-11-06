@@ -8,12 +8,12 @@ const OVERLAY_WIDTH: f64 = 200.0;
 const OVERLAY_HEIGHT: f64 = 42.0;
 
 #[cfg(target_os = "macos")]
-const OVERLAY_TOP_OFFSET: f64 = 38.0;
+const OVERLAY_TOP_OFFSET: f64 = 46.0;
 #[cfg(any(target_os = "windows", target_os = "linux"))]
 const OVERLAY_TOP_OFFSET: f64 = 3.0;
 
 #[cfg(target_os = "macos")]
-const OVERLAY_BOTTOM_OFFSET: f64 = 13.0;
+const OVERLAY_BOTTOM_OFFSET: f64 = 15.0;
 
 #[cfg(any(target_os = "windows", target_os = "linux"))]
 const OVERLAY_BOTTOM_OFFSET: f64 = 40.0;
