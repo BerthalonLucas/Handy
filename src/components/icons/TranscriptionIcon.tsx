@@ -8,8 +8,8 @@ interface TranscriptionIconProps {
 }
 
 const TranscriptionIcon: React.FC<TranscriptionIconProps> = ({
-  width = 34,
-  height = 34,
+  width = 24,
+  height = 24,
   color = "#FAA2CA",
   className = "",
 }) => {

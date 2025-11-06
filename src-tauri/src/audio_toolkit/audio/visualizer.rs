@@ -105,7 +105,9 @@ impl AudioVisualiser {
         let mut buckets = vec![0.0; self.buckets];
 
         for (bucket_idx, &(start_bin, end_bin)) in self.bucket_ranges.iter().enumerate() {
+            // Handle edge cases: invalid frequency ranges → set to 0.0 explicitly
             if start_bin >= end_bin || end_bin > self.fft_input.len() / 2 {
+                buckets[bucket_idx] = 0.0;  // Explicit assignment instead of skip
                 continue;
             }
 

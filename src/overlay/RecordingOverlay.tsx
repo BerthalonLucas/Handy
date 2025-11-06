@@ -13,9 +13,9 @@ type OverlayState = "recording" | "transcribing";
 const RecordingOverlay: React.FC = () => {
   const [isVisible, setIsVisible] = useState(false);
   const [state, setState] = useState<OverlayState>("recording");
-  const [levels, setLevels] = useState<number[]>(Array(16).fill(0));
+  const [levels, setLevels] = useState<number[]>([]);
   const [transcriptionProgress, setTranscriptionProgress] = useState(0);
-  const smoothedLevelsRef = useRef<number[]>(Array(16).fill(0));
+  const smoothedLevelsRef = useRef<number[]>([]);
 
   useEffect(() => {
     const setupEventListeners = async () => {
@@ -35,22 +35,28 @@ const RecordingOverlay: React.FC = () => {
       const unlistenLevel = await listen<number[]>("mic-level", (event) => {
         const newLevels = event.payload as number[];
 
+        // Initialize smoothedLevelsRef if empty (first run)
+        if (smoothedLevelsRef.current.length === 0) {
+          smoothedLevelsRef.current = new Array(newLevels.length).fill(0);
+        }
+
         // Apply smoothing to reduce jitter
-        const smoothed = smoothedLevelsRef.current.map((prev, i) => {
-          const target = newLevels[i] || 0;
+        const smoothed = newLevels.map((target, i) => {
+          const prev = smoothedLevelsRef.current[i] || 0;
           return prev * 0.7 + target * 0.3; // Smooth transition
         });
 
         smoothedLevelsRef.current = smoothed;
 
-        // Create 17 bars (odd number) by duplicating center for perfect symmetry
-        const centerIndex = 8; // Center of 16 bars (0-15)
-        const bars17 = [
-          ...smoothed.slice(0, centerIndex),
-          smoothed[centerIndex], // Duplicate center
-          ...smoothed.slice(centerIndex)
+        // Create symmetric visualization: duplicate center frequency bucket
+        // With 24 buckets → [0-11] + [12] + [13-23] = 12 + 1 + 11 = 24 → displayed as 25 bars
+        const centerIndex = Math.floor(smoothed.length / 2);
+        const barsWithCenter = [
+          ...smoothed.slice(0, centerIndex),      // Left side: indices before center
+          smoothed[centerIndex],                   // Center: duplicated for symmetry
+          ...smoothed.slice(centerIndex + 1)      // Right side: indices after center
         ];
-        setLevels(bars17); // Display 17 bars for odd-numbered symmetry
+        setLevels(barsWithCenter);
       });
 
       // Listen for transcription-progress updates
@@ -84,8 +90,8 @@ const RecordingOverlay: React.FC = () => {
   const getCenterWaveCoefficient = (index: number, totalBars: number): number => {
     const center = (totalBars - 1) / 2;
     const distanceFromCenter = Math.abs(index - center);
-    // ULTRA aggressive exponential falloff: ONLY center bars (7-8-9) react to quiet sounds
-    return Math.max(0.02, 1.0 - Math.pow(distanceFromCenter / center, 10.0) * 0.98);
+    // Gentler exponential falloff for better distribution across all bars
+    return Math.max(0.15, 1.0 - Math.pow(distanceFromCenter / center, 3.5) * 0.85);
   };
 
   const getIcon = () => {
@@ -106,8 +112,8 @@ const RecordingOverlay: React.FC = () => {
             {levels.map((v, i) => {
               const waveCoeff = getCenterWaveCoefficient(i, levels.length);
               const maskedValue = v * waveCoeff; // Apply center-wave mask
-              const height = Math.min(26, (3 + Math.pow(maskedValue * 2.5, 0.6) * 14) * 1.4); // Compact: max 26px
-              const opacity = Math.max(0.3, Math.min(1, maskedValue * 2.5));
+              const height = Math.min(24, (2.5 + Math.pow(maskedValue * 3.5, 0.6) * 12.5) * 1.4); // Compact: max 24px, increased sensitivity
+              const opacity = Math.max(0.3, Math.min(1, maskedValue * 3.5));
 
               return (
                 <div
