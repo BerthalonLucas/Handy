@@ -16,7 +16,7 @@ const OVERLAY_TOP_OFFSET: f64 = 3.0;
 const OVERLAY_BOTTOM_OFFSET: f64 = 13.0;
 
 #[cfg(any(target_os = "windows", target_os = "linux"))]
-const OVERLAY_BOTTOM_OFFSET: f64 = 33.0;
+const OVERLAY_BOTTOM_OFFSET: f64 = 40.0;
 
 fn get_monitor_with_cursor(app_handle: &AppHandle) -> Option<tauri::Monitor> {
     let enigo = Enigo::new(&Default::default());
@@ -178,12 +178,5 @@ pub fn emit_levels(app_handle: &AppHandle, levels: &Vec<f32>) {
     // also emit to the recording overlay if it's open
     if let Some(overlay_window) = app_handle.get_webview_window("recording_overlay") {
         let _ = overlay_window.emit("mic-level", levels);
-    }
-}
-
-/// Emits transcription progress to the overlay window
-pub fn emit_transcription_progress(app_handle: &AppHandle, progress: f64) {
-    if let Some(overlay_window) = app_handle.get_webview_window("recording_overlay") {
-        let _ = overlay_window.emit("transcription-progress", progress);
     }
 }

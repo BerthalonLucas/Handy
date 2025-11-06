@@ -14,7 +14,6 @@ const RecordingOverlay: React.FC = () => {
   const [isVisible, setIsVisible] = useState(false);
   const [state, setState] = useState<OverlayState>("recording");
   const [levels, setLevels] = useState<number[]>([]);
-  const [transcriptionProgress, setTranscriptionProgress] = useState(0);
   const smoothedLevelsRef = useRef<number[]>([]);
 
   useEffect(() => {
@@ -35,62 +34,41 @@ const RecordingOverlay: React.FC = () => {
       const unlistenLevel = await listen<number[]>("mic-level", (event) => {
         const newLevels = event.payload as number[];
 
-        // Initialize smoothedLevelsRef if empty (first run)
         if (smoothedLevelsRef.current.length === 0) {
           smoothedLevelsRef.current = new Array(newLevels.length).fill(0);
         }
 
-        // Apply smoothing to reduce jitter
         const smoothed = newLevels.map((target, i) => {
           const prev = smoothedLevelsRef.current[i] || 0;
-          return prev * 0.7 + target * 0.3; // Smooth transition
+          return prev * 0.7 + target * 0.3;
         });
 
         smoothedLevelsRef.current = smoothed;
 
-        // Create symmetric visualization: duplicate center frequency bucket
-        // With 24 buckets → [0-11] + [12] + [13-23] = 12 + 1 + 11 = 24 → displayed as 25 bars
         const centerIndex = Math.floor(smoothed.length / 2);
         const barsWithCenter = [
-          ...smoothed.slice(0, centerIndex),      // Left side: indices before center
-          smoothed[centerIndex],                   // Center: duplicated for symmetry
-          ...smoothed.slice(centerIndex + 1)      // Right side: indices after center
+          ...smoothed.slice(0, centerIndex),
+          smoothed[centerIndex],
+          ...smoothed.slice(centerIndex + 1)
         ];
+        
         setLevels(barsWithCenter);
       });
 
-      // Listen for transcription-progress updates
-      const unlistenProgress = await listen<number>(
-        "transcription-progress",
-        (event) => {
-          setTranscriptionProgress(event.payload as number);
-        }
-      );
-
-      // Cleanup function
       return () => {
         unlistenShow();
         unlistenHide();
         unlistenLevel();
-        unlistenProgress();
       };
     };
 
     setupEventListeners();
   }, []);
 
-  // Reset progress when switching to recording state
-  useEffect(() => {
-    if (state === "recording") {
-      setTranscriptionProgress(0);
-    }
-  }, [state]);
-
   // Center-wave effect: bars in the center react first to quiet sounds
   const getCenterWaveCoefficient = (index: number, totalBars: number): number => {
     const center = (totalBars - 1) / 2;
     const distanceFromCenter = Math.abs(index - center);
-    // Gentler exponential falloff for better distribution across all bars
     return Math.max(0.15, 1.0 - Math.pow(distanceFromCenter / center, 3.5) * 0.85);
   };
 
@@ -111,9 +89,14 @@ const RecordingOverlay: React.FC = () => {
           <div className="bars-container">
             {levels.map((v, i) => {
               const waveCoeff = getCenterWaveCoefficient(i, levels.length);
-              const maskedValue = v * waveCoeff; // Apply center-wave mask
-              const height = Math.min(24, (2.5 + Math.pow(maskedValue * 3.5, 0.6) * 12.5) * 1.4); // Compact: max 24px, increased sensitivity
-              const opacity = Math.max(0.3, Math.min(1, maskedValue * 3.5));
+              const maskedValue = v * waveCoeff;
+              const height = Math.min(24, (2.5 + Math.pow(maskedValue * 4.0, 0.55) * 12.5) * 1.4);
+              const opacity = Math.max(0.3, Math.min(1, maskedValue * 4.0));
+              
+              const pinkIntensity = Math.min(0.6, maskedValue * 1.2);
+              const background = `linear-gradient(180deg,
+                rgba(${255 - pinkIntensity * 100}, ${255 - pinkIntensity * 150}, ${255 - pinkIntensity * 80}, 0.9) 0%,
+                rgba(${230 - pinkIntensity * 90}, ${230 - pinkIntensity * 130}, ${235 - pinkIntensity * 70}, 0.7) 100%)`;
 
               return (
                 <div
@@ -121,8 +104,8 @@ const RecordingOverlay: React.FC = () => {
                   className="bar"
                   style={{
                     height: `${height}px`,
-                    transition: "height 60ms ease-out, opacity 120ms ease-out",
                     opacity: opacity,
+                    background: background,
                   }}
                 />
               );
@@ -130,17 +113,7 @@ const RecordingOverlay: React.FC = () => {
           </div>
         )}
         {state === "transcribing" && (
-          <div className="transcribing-container">
-            <div className="transcribing-text">
-              Transcribing... {Math.round(transcriptionProgress * 100)}%
-            </div>
-            <div className="progress-bar-track">
-              <div
-                className="progress-bar-fill"
-                style={{ width: `${transcriptionProgress * 100}%` }}
-              />
-            </div>
-          </div>
+          <div className="transcribing-text">Transcribing...</div>
         )}
       </div>
 
